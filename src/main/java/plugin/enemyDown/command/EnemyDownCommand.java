@@ -33,6 +33,15 @@ public class EnemyDownCommand implements CommandExecutor {
     return false;
   }
 
+  /**
+   * 敵を出現させる場所を生成するメソッド
+   * 出現エリアはX軸とZ軸は自分の位置からプラスランダムで-10〜9の値が設定されます
+   * Y軸はプレイヤーと同じ位置です
+   * @param player コマンドを実行したプレイヤー
+   * @param world コマンドを実行したプレイヤーが所属するワールド
+   * @return ロケーション
+   */
+
   @NotNull
   private Location enemySpawnLocation(Player player, World world) {
     Location playerLocation = player.getLocation();
