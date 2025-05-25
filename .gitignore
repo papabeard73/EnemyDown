@@ -1,0 +1,30 @@
+# --- Java / Gradle 共通 ---
+*.class
+*.log
+*.jar
+*.war
+*.ear
+
+# ビルド成果物ディレクトリ
+build/
+out/
+
+# 一時ファイル・バックアップ
+*.tmp
+*.bak
+*.swp
+*.swo
+
+# OS・IDE関係
+.DS_Store
+Thumbs.db
+.idea/
+*.iml
+.gradle/
+
+# Gradle系設定ファイルは個別指定
+/settings.properties
+/local.properties
+
+# Gitが一時的に使うファイル
+*.orig
