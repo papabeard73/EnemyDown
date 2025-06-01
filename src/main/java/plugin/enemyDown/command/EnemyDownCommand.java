@@ -1,5 +1,6 @@
 package plugin.enemyDown.command;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.SplittableRandom;
@@ -17,16 +18,26 @@ import org.bukkit.event.entity.EntityDeathEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
 import org.jetbrains.annotations.NotNull;
+import plugin.enemyDown.data.PlayerScore;
 
 public class EnemyDownCommand implements CommandExecutor, Listener {
-  private Player player;
-  private int score;
+
+  private List<PlayerScore> playerScoreList = new ArrayList<>();
 
   @Override
   public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command,
       @NotNull String label, @NotNull String[] args) {
       if (sender instanceof Player player){
-        this.player = player;
+        if(playerScoreList.isEmpty()) {
+          addNewPlayer(player);
+        } else {
+          for(PlayerScore playerScore : playerScoreList ) {
+            if(!playerScore.getPlayerName().equals(player.getName())){
+              addNewPlayer(player);
+            }
+          }
+        }
+
 
         player.setHealth(20);
         player.setFoodLevel(20);
@@ -49,6 +60,16 @@ public class EnemyDownCommand implements CommandExecutor, Listener {
         world.spawnEntity(enemySpawnLocation, enemyList.get(randomIntEnemy));
       }
     return false;
+  }
+
+  /**
+   * 新規のプレイヤー情報をリストに追加します。
+   * @param player　コマンドを実行したプレイヤー
+   */
+  private void addNewPlayer(Player player) {
+    PlayerScore playerScore = new PlayerScore();
+    playerScore.setPlayerName(player.getName());
+    playerScoreList.add(playerScore);
   }
 
   /**
@@ -75,15 +96,15 @@ public class EnemyDownCommand implements CommandExecutor, Listener {
   @EventHandler
   public void onEnemyDeath (EntityDeathEvent e) {
       Player player = e.getEntity().getKiller();
-      if (Objects.isNull(player)){
-        return;
+    if (Objects.isNull(player) || playerScoreList.isEmpty()) {
+      return;
+    }
+
+    for(PlayerScore playerScore : playerScoreList ) {
+      if(playerScore.getPlayerName().equals(player.getName())){
+        playerScore.setScore(playerScore.getScore() + 10);
+        player.sendMessage("敵を倒した！現在のスコアは" + playerScore.getScore() + "点！");
       }
-      if (Objects.isNull(this.player)){
-        return;
-      }
-      if(this.player.getName().equals(player.getName())) {
-        score += 10;
-        player.sendMessage("敵を倒した！現在のスコアは" + score);
     }
   }
 }
