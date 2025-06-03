@@ -10,7 +10,7 @@ public final class Main extends JavaPlugin {
   public void onEnable() {
     // Plugin startup logic
 
-    EnemyDownCommand enemyDownCommand = new EnemyDownCommand();
+    EnemyDownCommand enemyDownCommand = new EnemyDownCommand(this);
 
     // イベントリスナーを登録
     Bukkit.getPluginManager().registerEvents(enemyDownCommand,this);

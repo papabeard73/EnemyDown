@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.SplittableRandom;
+import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.World;
@@ -18,15 +19,22 @@ import org.bukkit.event.entity.EntityDeathEvent;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
 import org.jetbrains.annotations.NotNull;
+import plugin.enemyDown.Main;
 import plugin.enemyDown.data.PlayerScore;
 
 public class EnemyDownCommand implements CommandExecutor, Listener {
-
+  private Main main;
   private List<PlayerScore> playerScoreList = new ArrayList<>();
+  private int gameTime = 20;
+
+  public EnemyDownCommand(Main main) {
+    this.main = main;
+  }
 
   @Override
   public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command,
       @NotNull String label, @NotNull String[] args) {
+    gameTime = 20;
       if (sender instanceof Player player){
         if(playerScoreList.isEmpty()) {
           addNewPlayer(player);
@@ -37,7 +45,6 @@ public class EnemyDownCommand implements CommandExecutor, Listener {
             }
           }
         }
-
 
         player.setHealth(20);
         player.setFoodLevel(20);
@@ -57,7 +64,15 @@ public class EnemyDownCommand implements CommandExecutor, Listener {
         int randomIntEnemy = new SplittableRandom().nextInt(2);
         List<EntityType> enemyList = List.of(EntityType.ZOMBIE, EntityType.SKELETON);
 
-        world.spawnEntity(enemySpawnLocation, enemyList.get(randomIntEnemy));
+        Bukkit.getScheduler().runTaskTimer(main, Runnable ->{
+          if(gameTime <= 0) {
+            Runnable.cancel();
+            player.sendMessage("ゲームが終了しました！");
+            return;
+          }
+          world.spawnEntity(enemySpawnLocation, enemyList.get(randomIntEnemy));
+          gameTime -= 10;
+        }, 0, 5*20);
       }
     return false;
   }
