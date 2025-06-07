@@ -22,11 +22,21 @@ import org.jetbrains.annotations.NotNull;
 import plugin.enemyDown.Main;
 import plugin.enemyDown.data.PlayerScore;
 
+/**
+ * EnemyDownのゲームを実行するコマンドクラス。
+ * プレイヤーがコマンドを実行すると、敵を出現させ、プレイヤーのスコアを管理します。
+ * また、敵が倒された際にスコアを加算します。
+ */
 public class EnemyDownCommand implements CommandExecutor, Listener {
+  // プラグインのメインクラスへの参照を保持するフィールドです。
+  // このフィールドを通じて、Bukkitのスケジューラーやその他のプラグイン機能にアクセスできます。
   private Main main;
+  // プレイヤーのスコア情報を管理するためのリストです。
+  // このリストには、PlayerScoreオブジェクトが格納され、各プレイヤーの名前とスコアを追跡します。
   private List<PlayerScore> playerScoreList = new ArrayList<>();
-  private int gameTime = 20;
 
+  // Mainクラスのインスタンスを受け取り、mainフィールドに格納します。
+  // このコンストラクタにより、EnemyDownCommandクラスはプラグインのメインクラスと連携できるようになります。
   public EnemyDownCommand(Main main) {
     this.main = main;
   }
@@ -34,30 +44,16 @@ public class EnemyDownCommand implements CommandExecutor, Listener {
   @Override
   public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command,
       @NotNull String label, @NotNull String[] args) {
-    gameTime = 20;
       if (sender instanceof Player player){
-        if(playerScoreList.isEmpty()) {
-          addNewPlayer(player);
-        } else {
-          for(PlayerScore playerScore : playerScoreList ) {
-            if(!playerScore.getPlayerName().equals(player.getName())){
-              addNewPlayer(player);
-            }
-          }
-        }
-
-        player.setHealth(20);
-        player.setFoodLevel(20);
-
-        PlayerInventory inventory = player.getInventory();
-        inventory.setHelmet(new ItemStack(Material.DIAMOND_HELMET));
-        inventory.setChestplate(new ItemStack(Material.DIAMOND_CHESTPLATE));
-        inventory.setLeggings(new ItemStack(Material.DIAMOND_LEGGINGS));
-        inventory.setBoots(new ItemStack(Material.DIAMOND_BOOTS));
-        inventory.setItemInMainHand(new ItemStack(Material.DIAMOND_SWORD));
+        PlayerScore nowPlayer = getPlayerScore(player);
+        nowPlayer.setGameTime(20);
 
         // ワールドの情報を変数に持つ。
         World world = player.getWorld();
+
+        // getPlayerScore(player);
+
+        initPlayerStatus(player);
 
         Location enemySpawnLocation = enemySpawnLocation(player, world);
 
@@ -65,26 +61,57 @@ public class EnemyDownCommand implements CommandExecutor, Listener {
         List<EntityType> enemyList = List.of(EntityType.ZOMBIE, EntityType.SKELETON);
 
         Bukkit.getScheduler().runTaskTimer(main, Runnable ->{
-          if(gameTime <= 0) {
+          if(nowPlayer.getGameTime() <= 0) {
             Runnable.cancel();
-            player.sendMessage("ゲームが終了しました！");
+            player.sendTitle("ゲームが終了しました！", "あなたのスコアは" + nowPlayer.getScore() + "点です！", 0, 30, 0);
+            nowPlayer.setScore(0);
             return;
           }
           world.spawnEntity(enemySpawnLocation, enemyList.get(randomIntEnemy));
-          gameTime -= 10;
+          nowPlayer.setGameTime(nowPlayer.getGameTime() - 5);
         }, 0, 5*20);
       }
     return false;
+  }
+
+  private static void initPlayerStatus(Player player) {
+    player.setHealth(20);
+    player.setFoodLevel(20);
+
+    PlayerInventory inventory = player.getInventory();
+    inventory.setHelmet(new ItemStack(Material.DIAMOND_HELMET));
+    inventory.setChestplate(new ItemStack(Material.DIAMOND_CHESTPLATE));
+    inventory.setLeggings(new ItemStack(Material.DIAMOND_LEGGINGS));
+    inventory.setBoots(new ItemStack(Material.DIAMOND_BOOTS));
+    inventory.setItemInMainHand(new ItemStack(Material.DIAMOND_SWORD));
+
+
+  }
+
+  private PlayerScore getPlayerScore(Player player) {
+    if(playerScoreList.isEmpty()) {
+      return addNewPlayer(player);
+    } else {
+      for(PlayerScore playerScore : playerScoreList ) {
+        if(!playerScore.getPlayerName().equals(player.getName())){
+          return addNewPlayer(player);
+        } else {
+          return playerScore;
+        }
+      }
+    }
+    return null;
   }
 
   /**
    * 新規のプレイヤー情報をリストに追加します。
    * @param player　コマンドを実行したプレイヤー
    */
-  private void addNewPlayer(Player player) {
+  private PlayerScore addNewPlayer(Player player) {
     PlayerScore playerScore = new PlayerScore();
     playerScore.setPlayerName(player.getName());
     playerScoreList.add(playerScore);
+    return playerScore;
   }
 
   /**
