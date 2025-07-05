@@ -11,6 +11,7 @@ import org.bukkit.World;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
+import org.bukkit.entity.Entity;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
@@ -74,21 +75,48 @@ public class EnemyDownCommand implements CommandExecutor, Listener {
             Runnable.cancel();
             player.sendTitle("ゲームが終了しました！", "あなたのスコアは" + nowPlayer.getScore() + "点です！", 0, 30, 0);
             nowPlayer.setScore(0);
+            // プレイヤーの周囲にいる敵（スケルトン、ゾンビ、ウィッチ）を削除します。
+            List<Entity> nearbyEnemies = player.getNearbyEntities(100, 100, 100);
+            for (Entity enemy : nearbyEnemies) {
+              switch (enemy.getType()) {
+                case SKELETON -> enemy.remove();
+                case ZOMBIE -> enemy.remove();
+                case WITCH -> enemy.remove();
+              }
+            }
             return;
           }
-          // 敵の出現位置を計算するために、enemySpawnLocationメソッドを使用してランダムな座標を生成します
-          Location enemySpawnLocation = enemySpawnLocation(player, world);
-          // また、敵の種類をランダムに選択するために、EntityTypeのリストを作成しています。
-          List<EntityType> enemyList = List.of(EntityType.ZOMBIE, EntityType.SKELETON, EntityType.WITCH);
 
-          int randomIntEnemy = new SplittableRandom().nextInt(enemyList.size());
           // 生成された座標にランダムな敵を出現させます。
-          world.spawnEntity(enemySpawnLocation, enemyList.get(randomIntEnemy));
+          world.spawnEntity(getEnemySpawnLocation(player, world), getEnemy());
           // ゲーム時間を5秒減少させます。
           nowPlayer.setGameTime(nowPlayer.getGameTime() - 5);
         }, 0, 5*20);
       }
     return false;
+  }
+
+  /**
+   * 敵の種類をランダムに選択するメソッド。
+   * 敵の種類は、Zombie、Skeleton、Witchのいずれかです。
+   * @return EntityType ランダムに選択された敵の種類
+   */
+  private static EntityType getEnemy() {
+    // また、敵の種類をランダムに選択するために、EntityTypeのリストを作成しています。
+    List<EntityType> enemyList = List.of(EntityType.ZOMBIE, EntityType.SKELETON, EntityType.WITCH);
+    int randomIntEnemy = new SplittableRandom().nextInt(enemyList.size());
+    return enemyList.get(randomIntEnemy);
+  }
+
+  /**
+   * 敵の出現位置を取得するメソッド。
+   * プレイヤーの位置を基準に、敵が出現するランダムな座標を生成します。
+   * @param player コマンドを実行したプレイヤー
+   * @param world コマンドを実行したプレイヤーが所属するワールド
+   * @return Location 敵が出現する位置
+   */
+  private Location getEnemySpawnLocation(Player player, World world) {
+    return enemySpawnLocation(player, world);
   }
 
   /**
