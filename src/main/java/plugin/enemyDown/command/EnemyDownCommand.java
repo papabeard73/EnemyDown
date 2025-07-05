@@ -12,6 +12,7 @@ import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.EntityType;
+import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -26,6 +27,9 @@ import plugin.enemyDown.data.PlayerScore;
  * EnemyDownのゲームを実行するコマンドクラス。
  * プレイヤーがコマンドを実行すると、敵を出現させ、プレイヤーのスコアを管理します。
  * また、敵が倒された際にスコアを加算します。
+ * implementsはインターフェースを実装する際に使い、extendはクラスを継承（またはインターフェースを拡張）する際に使います。
+ * implements：クラスがインターフェースのメソッドを実装する場合に使用します。多重実装が可能です。
+ * extends：クラスが他のクラスを継承する場合、またはインターフェースが他のインターフェースを拡張する場合に使用します。クラスの継承は単一継承のみです。
  */
 public class EnemyDownCommand implements CommandExecutor, Listener {
   // プラグインのメインクラスへの参照を保持するフィールドです。
@@ -41,39 +45,57 @@ public class EnemyDownCommand implements CommandExecutor, Listener {
     this.main = main;
   }
 
+  // onCommandメソッドをオーバーライドしており、プレイヤーが特定のコマンドを実行した際の動作を定義しています
   @Override
+  // このメソッドは、Bukkitプラグインのコマンド処理を担当します。
   public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command,
       @NotNull String label, @NotNull String[] args) {
+    // コマンドを実行したのがプレイヤーであるかどうかを確認します。
+    // instanceof演算子を使用して、senderがPlayer型であるかを確認しています。
+    // この条件が真の場合、playerという変数にキャストされたPlayerオブジェクトが格納されます。
+    // この方法により、キャスト後の変数を直接使用できるため、コードが簡潔になります
       if (sender instanceof Player player){
+        // コマンドを実行したのがプレイヤーである場合、
+        // PlayerScoreオブジェクトを取得し、ゲーム時間を20秒に設定します。
         PlayerScore nowPlayer = getPlayerScore(player);
         nowPlayer.setGameTime(20);
 
-        // ワールドの情報を変数に持つ。
+        // プレイヤーが所属するワールド情報を取得し、プレイヤーのステータスを初期化します。
         World world = player.getWorld();
 
-        // getPlayerScore(player);
-
+        // この初期化では、プレイヤーの体力や空腹度を最大値に設定し、装備をダイヤモンド製のアイテムに変更しています。
         initPlayerStatus(player);
 
-        Location enemySpawnLocation = enemySpawnLocation(player, world);
-
-        int randomIntEnemy = new SplittableRandom().nextInt(2);
-        List<EntityType> enemyList = List.of(EntityType.ZOMBIE, EntityType.SKELETON);
-
+        // 一定間隔で敵を出現させるタスクをスケジュールします。
+        // このタスクは、ゲーム時間が0以下になるとキャンセルされ、プレイヤーにゲーム終了のメッセージを表示します。
         Bukkit.getScheduler().runTaskTimer(main, Runnable ->{
           if(nowPlayer.getGameTime() <= 0) {
+            // ゲーム時間が0以下になった場合、タスクをキャンセルし、プレイヤーにゲーム終了のメッセージを表示します。
             Runnable.cancel();
             player.sendTitle("ゲームが終了しました！", "あなたのスコアは" + nowPlayer.getScore() + "点です！", 0, 30, 0);
             nowPlayer.setScore(0);
             return;
           }
+          // 敵の出現位置を計算するために、enemySpawnLocationメソッドを使用してランダムな座標を生成します
+          Location enemySpawnLocation = enemySpawnLocation(player, world);
+          // また、敵の種類をランダムに選択するために、EntityTypeのリストを作成しています。
+          List<EntityType> enemyList = List.of(EntityType.ZOMBIE, EntityType.SKELETON, EntityType.WITCH);
+
+          int randomIntEnemy = new SplittableRandom().nextInt(enemyList.size());
+          // 生成された座標にランダムな敵を出現させます。
           world.spawnEntity(enemySpawnLocation, enemyList.get(randomIntEnemy));
+          // ゲーム時間を5秒減少させます。
           nowPlayer.setGameTime(nowPlayer.getGameTime() - 5);
         }, 0, 5*20);
       }
     return false;
   }
 
+  /**
+   * プレイヤーのステータスを初期化するメソッド。
+   * プレイヤーの体力と空腹度を最大値（20）に設定し、装備をダイヤモンド製のアイテムに変更します。
+   * @param player コマンドを実行したプレイヤー
+   */
   private static void initPlayerStatus(Player player) {
     player.setHealth(20);
     player.setFoodLevel(20);
@@ -84,10 +106,17 @@ public class EnemyDownCommand implements CommandExecutor, Listener {
     inventory.setLeggings(new ItemStack(Material.DIAMOND_LEGGINGS));
     inventory.setBoots(new ItemStack(Material.DIAMOND_BOOTS));
     inventory.setItemInMainHand(new ItemStack(Material.DIAMOND_SWORD));
-
-
   }
 
+  /**
+   * プレイヤーのスコア情報を取得するメソッド。
+   * プレイヤーが初めてコマンドを実行した場合は新規のPlayerScoreオブジェクトを作成し、リストに追加します。
+   * 既存のプレイヤーの場合は、そのスコア情報を返します。
+   * private修飾子が付いているため、このEnemyDownCommandクラス内でのみgetPlayerScoreメソッドを呼び出すことができます。
+   * 戻り値の型はPlayerScoreなので、呼び出し元にはPlayerScore型のオブジェクトが返されます。
+   * @param player コマンドを実行したプレイヤー
+   * @return PlayerScore オブジェクト
+   */
   private PlayerScore getPlayerScore(Player player) {
     if(playerScoreList.isEmpty()) {
       return addNewPlayer(player);
@@ -106,6 +135,7 @@ public class EnemyDownCommand implements CommandExecutor, Listener {
   /**
    * 新規のプレイヤー情報をリストに追加します。
    * @param player　コマンドを実行したプレイヤー
+   * @return PlayerScore オブジェクト
    */
   private PlayerScore addNewPlayer(Player player) {
     PlayerScore playerScore = new PlayerScore();
@@ -120,9 +150,8 @@ public class EnemyDownCommand implements CommandExecutor, Listener {
    * Y軸はプレイヤーと同じ位置です
    * @param player コマンドを実行したプレイヤー
    * @param world コマンドを実行したプレイヤーが所属するワールド
-   * @return ロケーション
+   * @return Location 敵が出現する位置
    */
-
   @NotNull
   private Location enemySpawnLocation(Player player, World world) {
     Location playerLocation = player.getLocation();
@@ -135,16 +164,31 @@ public class EnemyDownCommand implements CommandExecutor, Listener {
     return new Location(world, x,y,z);
   }
 
+  /**
+   * 敵が倒された際にスコアを加算するイベントハンドラー。
+   * イベントハンドラーとは、特定のイベント（例：エンティティの死亡、プレイヤーの移動など）が発生したときに自動的に呼び出されるメソッドのことです。
+   * Bukkitプラグインでは、@EventHandlerアノテーションを付けてイベントを受け取るメソッドを定義し、イベント発生時にそのメソッドが実行されます。
+   * この仕組みにより、ゲーム内のさまざまな出来事に対して独自の処理を追加できます。
+   * プレイヤーが敵を倒した場合、そのプレイヤーのスコアを10点加算し、メッセージを送信します。
+   * @param e EntityDeathEvent イベントオブジェクト
+   */
   @EventHandler
   public void onEnemyDeath (EntityDeathEvent e) {
-      Player player = e.getEntity().getKiller();
+    LivingEntity entity = e.getEntity();
+    Player player = entity.getKiller();
     if (Objects.isNull(player) || playerScoreList.isEmpty()) {
       return;
     }
 
     for(PlayerScore playerScore : playerScoreList ) {
       if(playerScore.getPlayerName().equals(player.getName())){
-        playerScore.setScore(playerScore.getScore() + 10);
+        int point = switch (entity.getType()) {
+          case ZOMBIE -> 10;
+          case SKELETON, WITCH -> 20;
+          default -> 0;
+        };
+
+        playerScore.setScore(playerScore.getScore() + point);
         player.sendMessage("敵を倒した！現在のスコアは" + playerScore.getScore() + "点！");
       }
     }
