@@ -8,7 +8,6 @@ import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Material;
 import org.bukkit.World;
-import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Entity;
@@ -32,7 +31,7 @@ import plugin.enemyDown.data.PlayerScore;
  * implements：クラスがインターフェースのメソッドを実装する場合に使用します。多重実装が可能です。
  * extends：クラスが他のクラスを継承する場合、またはインターフェースが他のインターフェースを拡張する場合に使用します。クラスの継承は単一継承のみです。
  */
-public class EnemyDownCommand implements CommandExecutor, Listener {
+public class EnemyDownCommand extends BaseCommand implements CommandExecutor, Listener {
   // プラグインのメインクラスへの参照を保持するフィールドです。
   // このフィールドを通じて、Bukkitのスケジューラーやその他のプラグイン機能にアクセスできます。
   private Main main;
@@ -46,53 +45,49 @@ public class EnemyDownCommand implements CommandExecutor, Listener {
     this.main = main;
   }
 
-  // onCommandメソッドをオーバーライドしており、プレイヤーが特定のコマンドを実行した際の動作を定義しています
   @Override
-  // このメソッドは、Bukkitプラグインのコマンド処理を担当します。
-  public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command,
-      @NotNull String label, @NotNull String[] args) {
-    // コマンドを実行したのがプレイヤーであるかどうかを確認します。
-    // instanceof演算子を使用して、senderがPlayer型であるかを確認しています。
-    // この条件が真の場合、playerという変数にキャストされたPlayerオブジェクトが格納されます。
-    // この方法により、キャスト後の変数を直接使用できるため、コードが簡潔になります
-      if (sender instanceof Player player){
-        // コマンドを実行したのがプレイヤーである場合、
-        // PlayerScoreオブジェクトを取得し、ゲーム時間を20秒に設定します。
-        PlayerScore nowPlayer = getPlayerScore(player);
-        nowPlayer.setGameTime(20);
+  public boolean onExecutePlayerCommand(Player player) {
+    // コマンドを実行したのがプレイヤーである場合、
+    // PlayerScoreオブジェクトを取得し、ゲーム時間を20秒に設定します。
+    PlayerScore nowPlayer = getPlayerScore(player);
+    nowPlayer.setGameTime(20);
 
-        // プレイヤーが所属するワールド情報を取得し、プレイヤーのステータスを初期化します。
-        World world = player.getWorld();
+    // プレイヤーが所属するワールド情報を取得し、プレイヤーのステータスを初期化します。
+    World world = player.getWorld();
 
-        // この初期化では、プレイヤーの体力や空腹度を最大値に設定し、装備をダイヤモンド製のアイテムに変更しています。
-        initPlayerStatus(player);
+    // この初期化では、プレイヤーの体力や空腹度を最大値に設定し、装備をダイヤモンド製のアイテムに変更しています。
+    initPlayerStatus(player);
 
-        // 一定間隔で敵を出現させるタスクをスケジュールします。
-        // このタスクは、ゲーム時間が0以下になるとキャンセルされ、プレイヤーにゲーム終了のメッセージを表示します。
-        Bukkit.getScheduler().runTaskTimer(main, Runnable ->{
-          if(nowPlayer.getGameTime() <= 0) {
-            // ゲーム時間が0以下になった場合、タスクをキャンセルし、プレイヤーにゲーム終了のメッセージを表示します。
-            Runnable.cancel();
-            player.sendTitle("ゲームが終了しました！", "あなたのスコアは" + nowPlayer.getScore() + "点です！", 0, 30, 0);
-            nowPlayer.setScore(0);
-            // プレイヤーの周囲にいる敵（スケルトン、ゾンビ、ウィッチ）を削除します。
-            List<Entity> nearbyEnemies = player.getNearbyEntities(100, 100, 100);
-            for (Entity enemy : nearbyEnemies) {
-              switch (enemy.getType()) {
-                case SKELETON -> enemy.remove();
-                case ZOMBIE -> enemy.remove();
-                case WITCH -> enemy.remove();
-              }
-            }
-            return;
+    // 一定間隔で敵を出現させるタスクをスケジュールします。
+    // このタスクは、ゲーム時間が0以下になるとキャンセルされ、プレイヤーにゲーム終了のメッセージを表示します。
+    Bukkit.getScheduler().runTaskTimer(main, Runnable ->{
+      if(nowPlayer.getGameTime() <= 0) {
+        // ゲーム時間が0以下になった場合、タスクをキャンセルし、プレイヤーにゲーム終了のメッセージを表示します。
+        Runnable.cancel();
+        player.sendTitle("ゲームが終了しました！", "あなたのスコアは" + nowPlayer.getScore() + "点です！", 0, 30, 0);
+        nowPlayer.setScore(0);
+        // プレイヤーの周囲にいる敵（スケルトン、ゾンビ、ウィッチ）を削除します。
+        List<Entity> nearbyEnemies = player.getNearbyEntities(100, 100, 100);
+        for (Entity enemy : nearbyEnemies) {
+          switch (enemy.getType()) {
+            case SKELETON -> enemy.remove();
+            case ZOMBIE -> enemy.remove();
+            case WITCH -> enemy.remove();
           }
-
-          // 生成された座標にランダムな敵を出現させます。
-          world.spawnEntity(getEnemySpawnLocation(player, world), getEnemy());
-          // ゲーム時間を5秒減少させます。
-          nowPlayer.setGameTime(nowPlayer.getGameTime() - 5);
-        }, 0, 5*20);
+        }
+        return;
       }
+
+      // 生成された座標にランダムな敵を出現させます。
+      world.spawnEntity(getEnemySpawnLocation(player, world), getEnemy());
+      // ゲーム時間を5秒減少させます。
+      nowPlayer.setGameTime(nowPlayer.getGameTime() - 5);
+    }, 0, 5*20);
+    return true;
+  }
+
+  @Override
+  public boolean onExecuteNPCCommand(CommandSender sender) {
     return false;
   }
 
