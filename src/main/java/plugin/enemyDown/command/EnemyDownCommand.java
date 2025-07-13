@@ -32,6 +32,8 @@ import plugin.enemyDown.data.PlayerScore;
  * extends：クラスが他のクラスを継承する場合、またはインターフェースが他のインターフェースを拡張する場合に使用します。クラスの継承は単一継承のみです。
  */
 public class EnemyDownCommand extends BaseCommand implements CommandExecutor, Listener {
+
+  public static final int GAME_TIME = 20;
   // プラグインのメインクラスへの参照を保持するフィールドです。
   // このフィールドを通じて、Bukkitのスケジューラーやその他のプラグイン機能にアクセスできます。
   private Main main;
@@ -50,7 +52,7 @@ public class EnemyDownCommand extends BaseCommand implements CommandExecutor, Li
     // コマンドを実行したのがプレイヤーである場合、
     // PlayerScoreオブジェクトを取得し、ゲーム時間を20秒に設定します。
     PlayerScore nowPlayer = getPlayerScore(player);
-    nowPlayer.setGameTime(20);
+    nowPlayer.setGameTime(GAME_TIME);
 
     // プレイヤーが所属するワールド情報を取得し、プレイヤーのステータスを初期化します。
     World world = player.getWorld();
@@ -60,6 +62,17 @@ public class EnemyDownCommand extends BaseCommand implements CommandExecutor, Li
 
     // 一定間隔で敵を出現させるタスクをスケジュールします。
     // このタスクは、ゲーム時間が0以下になるとキャンセルされ、プレイヤーにゲーム終了のメッセージを表示します。
+    gamePlay(player, nowPlayer, world);
+    return true;
+  }
+
+  /**
+   * ゲームを実行します。規定の時間内に敵を倒すとスコアが加算されます。合計スコアを時間経過後に表示します。
+   * @param player　コマンドを実行したプレイヤー
+   * @param nowPlayer　プレイヤースコア情報
+   * @param world　プレイヤーのいるワールド
+   */
+  private void gamePlay(Player player, PlayerScore nowPlayer, World world) {
     Bukkit.getScheduler().runTaskTimer(main, Runnable ->{
       if(nowPlayer.getGameTime() <= 0) {
         // ゲーム時間が0以下になった場合、タスクをキャンセルし、プレイヤーにゲーム終了のメッセージを表示します。
@@ -83,7 +96,6 @@ public class EnemyDownCommand extends BaseCommand implements CommandExecutor, Li
       // ゲーム時間を5秒減少させます。
       nowPlayer.setGameTime(nowPlayer.getGameTime() - 5);
     }, 0, 5*20);
-    return true;
   }
 
   @Override
@@ -144,13 +156,12 @@ public class EnemyDownCommand extends BaseCommand implements CommandExecutor, Li
     if(playerScoreList.isEmpty()) {
       return addNewPlayer(player);
     } else {
-      for(PlayerScore playerScore : playerScoreList ) {
-        if(!playerScore.getPlayerName().equals(player.getName())){
+      for(PlayerScore playerScore : playerScoreList )
+        if (!playerScore.getPlayerName().equals(player.getName())) {
           return addNewPlayer(player);
         } else {
           return playerScore;
         }
-      }
     }
     return null;
   }
@@ -161,8 +172,8 @@ public class EnemyDownCommand extends BaseCommand implements CommandExecutor, Li
    * @return PlayerScore オブジェクト
    */
   private PlayerScore addNewPlayer(Player player) {
-    PlayerScore playerScore = new PlayerScore();
-    playerScore.setPlayerName(player.getName());
+    PlayerScore playerScore = new PlayerScore(player.getName());
+//    playerScore.setPlayerName(player.getName());
     playerScoreList.add(playerScore);
     return playerScore;
   }
