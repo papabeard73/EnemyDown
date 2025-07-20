@@ -40,6 +40,7 @@ public class EnemyDownCommand extends BaseCommand implements CommandExecutor, Li
   // プレイヤーのスコア情報を管理するためのリストです。
   // このリストには、PlayerScoreオブジェクトが格納され、各プレイヤーの名前とスコアを追跡します。
   private List<PlayerScore> playerScoreList = new ArrayList<>();
+  private List<Entity> spawnEntityList = new ArrayList<>();
 
   // Mainクラスのインスタンスを受け取り、mainフィールドに格納します。
   // このコンストラクタにより、EnemyDownCommandクラスはプラグインのメインクラスと連携できるようになります。
@@ -53,6 +54,7 @@ public class EnemyDownCommand extends BaseCommand implements CommandExecutor, Li
     // PlayerScoreオブジェクトを取得し、ゲーム時間を20秒に設定します。
     PlayerScore nowPlayer = getPlayerScore(player);
     nowPlayer.setGameTime(GAME_TIME);
+    nowPlayer.setScore(0);
 
     // プレイヤーが所属するワールド情報を取得し、プレイヤーのステータスを初期化します。
     World world = player.getWorld();
@@ -69,32 +71,38 @@ public class EnemyDownCommand extends BaseCommand implements CommandExecutor, Li
   /**
    * ゲームを実行します。規定の時間内に敵を倒すとスコアが加算されます。合計スコアを時間経過後に表示します。
    * @param player　コマンドを実行したプレイヤー
-   * @param nowPlayer　プレイヤースコア情報
+   * @param nowPlayerScore　プレイヤースコア情報
    * @param world　プレイヤーのいるワールド
    */
-  private void gamePlay(Player player, PlayerScore nowPlayer, World world) {
+  private void gamePlay(Player player, PlayerScore nowPlayerScore, World world) {
     Bukkit.getScheduler().runTaskTimer(main, Runnable ->{
-      if(nowPlayer.getGameTime() <= 0) {
+      if(nowPlayerScore.getGameTime() <= 0) {
+
         // ゲーム時間が0以下になった場合、タスクをキャンセルし、プレイヤーにゲーム終了のメッセージを表示します。
         Runnable.cancel();
-        player.sendTitle("ゲームが終了しました！", "あなたのスコアは" + nowPlayer.getScore() + "点です！", 0, 30, 0);
-        nowPlayer.setScore(0);
+        player.sendTitle("ゲームが終了しました！", "あなたのスコアは" + nowPlayerScore.getScore() + "点です！", 0, 30, 0);
+
+//        nowPlayerScore.setScore(0);
+
+        spawnEntityList.forEach(Entity::remove);
+
         // プレイヤーの周囲にいる敵（スケルトン、ゾンビ、ウィッチ）を削除します。
-        List<Entity> nearbyEnemies = player.getNearbyEntities(100, 100, 100);
-        for (Entity enemy : nearbyEnemies) {
-          switch (enemy.getType()) {
-            case SKELETON -> enemy.remove();
-            case ZOMBIE -> enemy.remove();
-            case WITCH -> enemy.remove();
-          }
-        }
+//        List<Entity> nearbyEnemies = player.getNearbyEntities(100, 100, 100);
+//        for (Entity enemy : nearbyEnemies) {
+//          switch (enemy.getType()) {
+//            case SKELETON -> enemy.remove();
+//            case ZOMBIE -> enemy.remove();
+//            case WITCH -> enemy.remove();
+//          }
+//        }
         return;
       }
 
       // 生成された座標にランダムな敵を出現させます。
-      world.spawnEntity(getEnemySpawnLocation(player, world), getEnemy());
+      Entity spawnEntity = world.spawnEntity(getEnemySpawnLocation(player, world), getEnemy());
+      spawnEntityList.add(spawnEntity);
       // ゲーム時間を5秒減少させます。
-      nowPlayer.setGameTime(nowPlayer.getGameTime() - 5);
+      nowPlayerScore.setGameTime(nowPlayerScore.getGameTime() - 5);
     }, 0, 5*20);
   }
 
@@ -110,7 +118,7 @@ public class EnemyDownCommand extends BaseCommand implements CommandExecutor, Li
    */
   private static EntityType getEnemy() {
     // また、敵の種類をランダムに選択するために、EntityTypeのリストを作成しています。
-    List<EntityType> enemyList = List.of(EntityType.ZOMBIE, EntityType.SKELETON, EntityType.WITCH);
+    List<EntityType> enemyList = List.of(EntityType.ZOMBIE, EntityType.SKELETON, EntityType.ZOMBIE_VILLAGER);
     int randomIntEnemy = new SplittableRandom().nextInt(enemyList.size());
     return enemyList.get(randomIntEnemy);
   }
@@ -153,16 +161,19 @@ public class EnemyDownCommand extends BaseCommand implements CommandExecutor, Li
    * @return PlayerScore オブジェクト
    */
   private PlayerScore getPlayerScore(Player player) {
+//    PlayerScore playerScore = new PlayerScore(player.getName());
+
     if(playerScoreList.isEmpty()) {
       return addNewPlayer(player);
     } else {
-      for(PlayerScore playerScore : playerScoreList )
-        if (!playerScore.getPlayerName().equals(player.getName())) {
+      for(PlayerScore score : playerScoreList )
+        if (!score.getPlayerName().equals(player.getName())) {
           return addNewPlayer(player);
         } else {
-          return playerScore;
+          return score;
         }
     }
+
     return null;
   }
 
@@ -218,7 +229,7 @@ public class EnemyDownCommand extends BaseCommand implements CommandExecutor, Li
       if(playerScore.getPlayerName().equals(player.getName())){
         int point = switch (entity.getType()) {
           case ZOMBIE -> 10;
-          case SKELETON, WITCH -> 20;
+          case SKELETON, ZOMBIE_VILLAGER -> 20;
           default -> 0;
         };
 
