@@ -148,6 +148,18 @@ public class EnemyDownCommand extends BaseCommand implements CommandExecutor, Li
         Runnable.cancel();
         player.sendTitle("ゲームが終了しました！", "あなたのスコアは" + nowPlayerScore.getScore() + "点です！", 0, 30, 0);
 
+        try(Connection con = DriverManager.getConnection(
+            "jdbc:mysql://localhost:3306/spigot_server",
+            "root",
+            "amanuma");
+            Statement statement = con.createStatement()){
+          statement.executeUpdate(
+              "insert player_score(Player_name, score, difficulty, registered_at)"
+              + "values('" + nowPlayerScore.getPlayerName() + "'," + nowPlayerScore.getScore() + ", '" + difficulty + "', now());");
+        } catch (SQLException e){
+          e.printStackTrace();;
+        }
+
         spawnEntityList.forEach(Entity::remove);
         spawnEntityList = new ArrayList<>();
 
